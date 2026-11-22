@@ -1,13 +1,10 @@
 ﻿using PcManager;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace ConsoleAppTest
+namespace ConsoleAppTest.Test
 {
-    public static partial class Test
+    public static partial class Run
     {
-        public static void TestRename()
+        public static void PcRename()
         {
 
             Console.WriteLine("Enter your PC name:");
