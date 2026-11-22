@@ -2,7 +2,7 @@
 // ConsoleAppTest.Test.Run.PcRename();
 // ConsoleAppTest.Test.Run.Rdp();
 
-ConsoleAppTest.Test.Run.FontInstall("path_to_font_file");
+ConsoleAppTest.Test.Run.FontInstall(@"C:\Users\jeff3\Downloads\JetBrainsMono-2.304\fonts\ttf\JetBrainsMono-Regular.ttf");
 
 
 
