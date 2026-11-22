@@ -6,9 +6,12 @@ namespace PcManager;
 
 public sealed record InstalledFont(string Name, string FilePath, InstallScope Scope);
 
+public sealed record FontInstallResult(string FilePath, bool Success, Exception? Error);
+
 public static class FontManager
 {
     private const string FontsKeyPath = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts";
+    private static readonly HashSet<string> FontExtensions = new(StringComparer.OrdinalIgnoreCase) { ".ttf", ".ttc", ".otf" };
 
     public static void Install(string fontFilePath, InstallScope scope)
     {
@@ -31,6 +34,35 @@ public static class FontManager
 
         AddFontResourceW(destinationPath);
         BroadcastFontChange();
+    }
+
+    public static IReadOnlyList<FontInstallResult> InstallFromFolder(string folderPath, InstallScope scope, bool recursive = false)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            throw new DirectoryNotFoundException($"Folder was not found: {folderPath}");
+        }
+
+        var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+        var fontFiles = Directory.EnumerateFiles(folderPath, "*.*", searchOption)
+            .Where(f => FontExtensions.Contains(Path.GetExtension(f)));
+
+        var results = new List<FontInstallResult>();
+
+        foreach (var fontFile in fontFiles)
+        {
+            try
+            {
+                Install(fontFile, scope);
+                results.Add(new FontInstallResult(fontFile, true, null));
+            }
+            catch (Exception ex)
+            {
+                results.Add(new FontInstallResult(fontFile, false, ex));
+            }
+        }
+
+        return results;
     }
 
     public static IReadOnlyList<InstalledFont> List(InstallScope? scope = null)
