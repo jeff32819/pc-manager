@@ -22,6 +22,56 @@ public static class WingetInstaller
         new WingetApp("Google Chrome", "Google.Chrome")
     ];
 
+    // "winget" on PATH is an App Execution Alias stub (%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe)
+    // that forwards to the real MSIX-packaged exe. That forwarding works fine run directly/interactively
+    // (e.g. typing "winget --version" in a terminal) but is documented to hang indefinitely when its
+    // stdout/stderr are redirected by a parent process - which is exactly what IsInstalled() and
+    // Install() (by default) need to do to capture output. Resolving the real packaged winget.exe and
+    // calling that directly avoids the alias stub, and redirection against it works normally.
+    // Resolved once and cached; falls back to the "winget" alias if resolution fails for any reason.
+    private static readonly Lazy<string> WingetExecutablePath = new(ResolveWingetExecutablePath);
+
+    private static string ResolveWingetExecutablePath()
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo("powershell")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            startInfo.ArgumentList.Add("-NoProfile");
+            startInfo.ArgumentList.Add("-Command");
+            startInfo.ArgumentList.Add("(Get-AppxPackage -Name Microsoft.DesktopAppInstaller).InstallLocation");
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start powershell.");
+
+            var installLocation = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit();
+
+            if (!string.IsNullOrEmpty(installLocation))
+            {
+                var candidate = Path.Combine(installLocation, "winget.exe");
+
+                if (File.Exists(candidate))
+                {
+                    Console.WriteLine($"[DEBUG] Resolved real winget.exe: {candidate}");
+                    return candidate;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Failed to resolve real winget.exe, falling back to alias: {ex.Message}");
+        }
+
+        return "winget";
+    }
+
     public static WingetInstallResult Install(WingetApp app, bool liveConsoleOutput = false, Action<string>? onOutputLine = null) =>
         Install(app.PackageId, liveConsoleOutput, onOutputLine);
 
@@ -74,7 +124,7 @@ public static class WingetInstaller
 
         Console.WriteLine($"[DEBUG] Install({packageId}): not installed, building ProcessStartInfo");
 
-        var startInfo = new ProcessStartInfo("winget")
+        var startInfo = new ProcessStartInfo(WingetExecutablePath.Value)
         {
             RedirectStandardOutput = !liveConsoleOutput,
             RedirectStandardError = !liveConsoleOutput,
@@ -136,7 +186,7 @@ public static class WingetInstaller
     // or installers with a mismatched display name/version, won't be detected this way.
     public static bool IsInstalled(string packageId)
     {
-        var startInfo = new ProcessStartInfo("winget")
+        var startInfo = new ProcessStartInfo(WingetExecutablePath.Value)
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
