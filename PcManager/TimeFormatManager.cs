@@ -58,6 +58,11 @@ public sealed class TimeFormatManager : IToggleSetting
             key.SetValue("sShortTime", "h:mm tt");
         }
 
+        // MM/dd/yyyy forces leading zeros on single-digit month/day (e.g. "03/07/2026"
+        // instead of "3/7/2026"). Independent of the 12/24-hour choice above, so it's set
+        // the same way regardless of which format is being applied.
+        key.SetValue("sShortDate", "MM/dd/yyyy");
+
         BroadcastSettingChange();
     }
 
