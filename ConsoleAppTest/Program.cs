@@ -5,11 +5,13 @@
 // ConsoleAppTest.Test.Run.Time24Hour();
 // ConsoleAppTest.Test.Run.Settings();
 
-PcManager.WingetInstaller.InstallAll((app, result, current, total) =>
-{
-    var percent = (int)(current / (double)total * 100);
-    Console.WriteLine($"[{percent,3}%] ({current}/{total}) {app.Name}: {result.Status}");
-});
+PcManager.WingetInstaller.InstallAll(
+    onProgress: (app, result, current, total) =>
+    {
+        var percent = (int)(current / (double)total * 100);
+        Console.WriteLine($"[{percent,3}%] ({current}/{total}) {app.Name}: {result.Status}");
+    },
+    onOutputLine: Console.WriteLine);
 
 /************************************************************************************/
 Console.WriteLine("press any key to exit");

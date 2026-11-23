@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace PcManager;
 
@@ -21,9 +22,12 @@ public static class WingetInstaller
         new WingetApp("Google Chrome", "Google.Chrome")
     ];
 
-    public static WingetInstallResult Install(WingetApp app) => Install(app.PackageId);
+    public static WingetInstallResult Install(WingetApp app, Action<string>? onOutputLine = null) =>
+        Install(app.PackageId, onOutputLine);
 
-    public static IReadOnlyList<WingetInstallResult> InstallAll(Action<WingetApp, WingetInstallResult, int, int>? onProgress = null)
+    public static IReadOnlyList<WingetInstallResult> InstallAll(
+        Action<WingetApp, WingetInstallResult, int, int>? onProgress = null,
+        Action<string>? onOutputLine = null)
     {
         var apps = KnownApps;
         var results = new List<WingetInstallResult>(apps.Count);
@@ -31,7 +35,7 @@ public static class WingetInstaller
         for (var i = 0; i < apps.Count; i++)
         {
             var app = apps[i];
-            var result = Install(app);
+            var result = Install(app.PackageId, onOutputLine);
             results.Add(result);
             onProgress?.Invoke(app, result, i + 1, apps.Count);
         }
@@ -39,7 +43,7 @@ public static class WingetInstaller
         return results;
     }
 
-    public static WingetInstallResult Install(string packageId)
+    public static WingetInstallResult Install(string packageId, Action<string>? onOutputLine = null)
     {
         // Pre-check with "winget list" before calling "winget install".
         // winget install is ALSO idempotent on its own (it checks the same Add/Remove Programs
@@ -67,15 +71,36 @@ public static class WingetInstaller
         startInfo.ArgumentList.Add("--accept-source-agreements");
         startInfo.ArgumentList.Add("--accept-package-agreements");
 
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to start the winget process.");
+        var outputBuilder = new StringBuilder();
 
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        void OnDataReceived(object? sender, DataReceivedEventArgs e)
+        {
+            if (e.Data is null)
+            {
+                return;
+            }
+
+            outputBuilder.AppendLine(e.Data);
+            onOutputLine?.Invoke(e.Data);
+        }
+
+        // Read output as it arrives (OutputDataReceived/ErrorDataReceived) instead of
+        // ReadToEnd(), which blocks until the process' output stream closes - i.e. until
+        // the whole download+install is finished. This lets callers see winget's status
+        // lines live instead of getting everything dumped at once at the end. Note: winget
+        // detects when stdout isn't a real console and falls back to plainer, less frequent
+        // status lines rather than its normal animated percentage bar.
+        using var process = new Process { StartInfo = startInfo };
+        process.OutputDataReceived += OnDataReceived;
+        process.ErrorDataReceived += OnDataReceived;
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         process.WaitForExit();
 
         var status = process.ExitCode == 0 ? WingetInstallStatus.Installed : WingetInstallStatus.Failed;
-        return new WingetInstallResult(packageId, status, process.ExitCode, output + error);
+        return new WingetInstallResult(packageId, status, process.ExitCode, outputBuilder.ToString());
     }
 
     // "winget list --id <id> -e" exits 0 when a matching package is found, non-zero otherwise.
