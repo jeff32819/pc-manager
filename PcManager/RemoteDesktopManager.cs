@@ -8,12 +8,18 @@ public enum RemoteDesktopStatus
     Disabled
 }
 
-public static class RemoteDesktopManager
+public sealed class RemoteDesktopManager : IToggleSetting
 {
+    public static readonly RemoteDesktopManager Instance = new();
+
     private const string KeyPath = @"SYSTEM\CurrentControlSet\Control\Terminal Server";
     private const string ValueName = "fDenyTSConnections";
 
-    public static RemoteDesktopStatus Status
+    private RemoteDesktopManager()
+    {
+    }
+
+    public RemoteDesktopStatus Status
     {
         get
         {
@@ -25,9 +31,13 @@ public static class RemoteDesktopManager
         }
     }
 
-    public static void Enable() => SetDenyConnections(0);
+    object IToggleSetting.Status => Status;
 
-    public static void Disable() => SetDenyConnections(1);
+    public bool? IsEnabled => Status == RemoteDesktopStatus.Enabled;
+
+    public void Enable() => SetDenyConnections(0);
+
+    public void Disable() => SetDenyConnections(1);
 
     private static void SetDenyConnections(int value)
     {

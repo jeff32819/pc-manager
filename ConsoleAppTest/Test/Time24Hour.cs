@@ -6,7 +6,7 @@
         {
             try
             {
-                PcManager.TimeFormatManager.SetMilitaryTime();
+                PcManager.TimeFormatManager.Instance.SetMilitaryTime();
             }
             catch (Exception ex)
             {

@@ -6,7 +6,7 @@
         {
             try
             {
-                PcManager.RemoteDesktopManager.Enable();
+                PcManager.RemoteDesktopManager.Instance.Enable();
 
             }
             catch (Exception ex)

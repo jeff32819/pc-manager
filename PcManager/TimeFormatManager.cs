@@ -9,11 +9,17 @@ public enum TimeFormat
     Military24Hour
 }
 
-public static class TimeFormatManager
+public sealed class TimeFormatManager : IToggleSetting
 {
+    public static readonly TimeFormatManager Instance = new();
+
     private const string KeyPath = @"Control Panel\International";
 
-    public static TimeFormat Status
+    private TimeFormatManager()
+    {
+    }
+
+    public TimeFormat Status
     {
         get
         {
@@ -22,9 +28,17 @@ public static class TimeFormatManager
         }
     }
 
-    public static void SetMilitaryTime() => SetFormat(TimeFormat.Military24Hour);
+    object IToggleSetting.Status => Status;
 
-    public static void SetStandardTime() => SetFormat(TimeFormat.Standard12Hour);
+    public bool? IsEnabled => Status == TimeFormat.Military24Hour;
+
+    public void Enable() => SetFormat(TimeFormat.Military24Hour);
+
+    public void Disable() => SetFormat(TimeFormat.Standard12Hour);
+
+    public void SetMilitaryTime() => Enable();
+
+    public void SetStandardTime() => Disable();
 
     private static void SetFormat(TimeFormat format)
     {
