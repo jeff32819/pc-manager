@@ -138,6 +138,7 @@ public static class WingetInstaller
         startInfo.ArgumentList.Add(packageId);
         startInfo.ArgumentList.Add("--accept-source-agreements");
         startInfo.ArgumentList.Add("--accept-package-agreements");
+        startInfo.ArgumentList.Add("--disable-interactivity");
 
         var outputBuilder = new StringBuilder();
 
@@ -205,6 +206,13 @@ public static class WingetInstaller
         startInfo.ArgumentList.Add("--id");
         startInfo.ArgumentList.Add(packageId);
         startInfo.ArgumentList.Add("-e");
+        // Without this, a machine that has never accepted winget's source agreements before
+        // (e.g. never run anything but "winget --version", which doesn't touch sources at all)
+        // will have "winget list" sit waiting for interactive y/n input on a prompt we never
+        // see and can't answer, since stdout/stderr are redirected but stdin isn't - another
+        // hang that looks identical to the pipe deadlock but has a different cause.
+        startInfo.ArgumentList.Add("--accept-source-agreements");
+        startInfo.ArgumentList.Add("--disable-interactivity");
 
         Console.WriteLine($"[DEBUG] IsInstalled({packageId}): calling process.Start()...");
 
