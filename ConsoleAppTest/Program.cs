@@ -21,7 +21,8 @@ PcManager.WingetInstaller.InstallAll(
             failures.Add((app, result));
         }
     },
-    liveConsoleOutput: true);
+    liveConsoleOutput: false,
+    onOutputLine: Console.WriteLine);
 
 Console.WriteLine();
 Console.WriteLine("-------------------------------------------------------------");
@@ -37,6 +38,7 @@ else
     foreach (var (app, result) in failures)
     {
         Console.WriteLine($"  - {app.Name} ({app.PackageId}): exit code {result.ExitCode}");
+        Console.WriteLine($"      {result.Output.Trim().Replace("\n", "\n      ")}");
     }
 }
 
