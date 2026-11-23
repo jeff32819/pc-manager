@@ -184,6 +184,13 @@ public static class WingetInstaller
     // installer/website, AS LONG AS that installer registered proper ARP entries (most do,
     // including Notepad++'s official installer). Portable/zip installs that skip ARP registration,
     // or installers with a mismatched display name/version, won't be detected this way.
+    //
+    // IMPORTANT: both stdout and stderr are redirected below, so they must be read concurrently,
+    // never with sequential blocking ReadToEnd() calls - that's the classic Process redirection
+    // deadlock: if the child fills up the OS pipe buffer on the stream nobody's draining yet
+    // (e.g. winget writing warnings/update notices to stderr while we're still blocked reading
+    // stdout), the child blocks on its write and never closes either stream, so our read never
+    // returns either. This is what caused InstallAll to hang indefinitely on some machines.
     public static bool IsInstalled(string packageId)
     {
         var startInfo = new ProcessStartInfo(WingetExecutablePath.Value)
@@ -204,15 +211,16 @@ public static class WingetInstaller
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start the winget process.");
 
-        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): started, PID {process.Id}, reading stdout...");
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): started, PID {process.Id}, reading stdout+stderr concurrently...");
 
-        process.StandardOutput.ReadToEnd();
+        // Must kick off both reads concurrently (not sequential ReadToEnd() calls) - see comment
+        // on the method above. Draining both pipes at once avoids the deadlock where one pipe's
+        // buffer fills up while nobody is reading it.
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        Task.WaitAll(stdoutTask, stderrTask);
 
-        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): stdout read complete, reading stderr...");
-
-        process.StandardError.ReadToEnd();
-
-        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): stderr read complete, waiting for exit...");
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): both streams read, waiting for exit...");
 
         process.WaitForExit();
 
