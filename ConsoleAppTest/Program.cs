@@ -1,4 +1,7 @@
-﻿
+﻿Console.WriteLine($"starting... {DateTime.Now}");
+Console.WriteLine();
+
+
 // ConsoleAppTest.Test.Run.PcRename();
 // ConsoleAppTest.Test.Run.Rdp();
 // ConsoleAppTest.Test.Run.FontInstall(@"C:\Users\jeff3\Downloads\JetBrainsMono-2.304\fonts\ttf\JetBrainsMono-Regular.ttf");
@@ -11,7 +14,7 @@ PcManager.WingetInstaller.InstallAll(
         var percent = (int)(current / (double)total * 100);
         Console.WriteLine($"[{percent,3}%] ({current}/{total}) {app.Name}: {result.Status}");
     },
-    onOutputLine: Console.WriteLine);
+    liveConsoleOutput: true);
 
 /************************************************************************************/
 Console.WriteLine("press any key to exit");

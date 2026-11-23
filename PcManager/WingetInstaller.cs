@@ -22,11 +22,12 @@ public static class WingetInstaller
         new WingetApp("Google Chrome", "Google.Chrome")
     ];
 
-    public static WingetInstallResult Install(WingetApp app, Action<string>? onOutputLine = null) =>
-        Install(app.PackageId, onOutputLine);
+    public static WingetInstallResult Install(WingetApp app, bool liveConsoleOutput = false, Action<string>? onOutputLine = null) =>
+        Install(app.PackageId, liveConsoleOutput, onOutputLine);
 
     public static IReadOnlyList<WingetInstallResult> InstallAll(
         Action<WingetApp, WingetInstallResult, int, int>? onProgress = null,
+        bool liveConsoleOutput = false,
         Action<string>? onOutputLine = null)
     {
         var apps = KnownApps;
@@ -35,7 +36,7 @@ public static class WingetInstaller
         for (var i = 0; i < apps.Count; i++)
         {
             var app = apps[i];
-            var result = Install(app.PackageId, onOutputLine);
+            var result = Install(app.PackageId, liveConsoleOutput, onOutputLine);
             results.Add(result);
             onProgress?.Invoke(app, result, i + 1, apps.Count);
         }
@@ -43,7 +44,15 @@ public static class WingetInstaller
         return results;
     }
 
-    public static WingetInstallResult Install(string packageId, Action<string>? onOutputLine = null)
+    // liveConsoleOutput: winget detects when its own stdout isn't a real console (i.e. when
+    // we redirect it to capture it) and suppresses/buffers its progress output almost entirely
+    // in that case - so redirecting, even with streamed reads, can show nothing at all until
+    // the process exits. Passing liveConsoleOutput: true skips redirection completely and lets
+    // winget inherit our console directly, which is the only way to get its real animated
+    // download percentage bar back. Trade-off: in that mode nothing is captured, so Output is
+    // empty and onOutputLine is never called - the text is going straight to the screen, not
+    // through this process.
+    public static WingetInstallResult Install(string packageId, bool liveConsoleOutput = false, Action<string>? onOutputLine = null)
     {
         // Pre-check with "winget list" before calling "winget install".
         // winget install is ALSO idempotent on its own (it checks the same Add/Remove Programs
@@ -58,10 +67,10 @@ public static class WingetInstaller
 
         var startInfo = new ProcessStartInfo("winget")
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
+            RedirectStandardOutput = !liveConsoleOutput,
+            RedirectStandardError = !liveConsoleOutput,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = false
         };
 
         startInfo.ArgumentList.Add("install");
@@ -84,19 +93,22 @@ public static class WingetInstaller
             onOutputLine?.Invoke(e.Data);
         }
 
-        // Read output as it arrives (OutputDataReceived/ErrorDataReceived) instead of
-        // ReadToEnd(), which blocks until the process' output stream closes - i.e. until
-        // the whole download+install is finished. This lets callers see winget's status
-        // lines live instead of getting everything dumped at once at the end. Note: winget
-        // detects when stdout isn't a real console and falls back to plainer, less frequent
-        // status lines rather than its normal animated percentage bar.
         using var process = new Process { StartInfo = startInfo };
-        process.OutputDataReceived += OnDataReceived;
-        process.ErrorDataReceived += OnDataReceived;
+
+        if (!liveConsoleOutput)
+        {
+            process.OutputDataReceived += OnDataReceived;
+            process.ErrorDataReceived += OnDataReceived;
+        }
 
         process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+
+        if (!liveConsoleOutput)
+        {
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
+
         process.WaitForExit();
 
         var status = process.ExitCode == 0 ? WingetInstallStatus.Installed : WingetInstallStatus.Failed;
