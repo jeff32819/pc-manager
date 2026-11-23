@@ -50,7 +50,7 @@ public static class WingetInstaller
         new WingetApp("WinMerge", "WinMerge.WinMerge"),
         new WingetApp("Angry IP Scanner", "angryziber.AngryIPScanner"),
         new WingetApp("Winget AutoUpdate", "Romanitho.Winget-AutoUpdate"),
-        new WingetApp("Microsoft Visual Studio Community", "Microsoft.VisualStudio.Community"),
+
         new WingetApp("Piriform Speccy", "Piriform.Speccy"),
         new WingetApp("Ditto", "Ditto.Ditto"),
         new WingetApp("WinsiderSS System Informer", "WinsiderSS.SystemInformer"),
@@ -92,6 +92,8 @@ public static class WingetInstaller
         new WingetApp("Google Drive", "Google.GoogleDrive"),
         new WingetApp("Registry Finder", "SergeyFilippov.RegistryFinder"),
 
+
+        // new WingetApp("Microsoft Visual Studio Community", "Microsoft.VisualStudio.Community"),
 
         // INSTALL ON DEV MACHINE.
         new WingetApp("Microsoft .NET SDK 10", "Microsoft.DotNet.SDK.10"),

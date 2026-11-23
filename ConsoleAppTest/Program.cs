@@ -17,8 +17,7 @@ await ConsoleAppTest.Test.Run.DownloadInstall();
 /************************************************************************************/
 Console.WriteLine();
 Console.WriteLine("-------------------------------------------------------------");
-Console.BackgroundColor = ConsoleColor.DarkYellow;
-Console.ForegroundColor = ConsoleColor.Red;
+Console.ForegroundColor = ConsoleColor.DarkYellow   ;
 Console.WriteLine("press any key to exit");
 Console.ResetColor();
 Console.ReadKey();
