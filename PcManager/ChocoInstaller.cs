@@ -121,7 +121,14 @@ public static class ChocoInstaller
         startInfo.ArgumentList.Add("install");
         startInfo.ArgumentList.Add(packageId);
         startInfo.ArgumentList.Add("-y");
-        startInfo.ArgumentList.Add("--no-progress");
+
+        // The download/install progress bar only renders when choco is writing straight to a
+        // real console; with output redirected (the non-live path) it can't draw one anyway and
+        // --no-progress keeps the captured log free of \r-driven progress spam.
+        if (!liveConsoleOutput)
+        {
+            startInfo.ArgumentList.Add("--no-progress");
+        }
 
         var outputBuilder = new StringBuilder();
 

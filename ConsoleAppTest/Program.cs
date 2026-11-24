@@ -14,7 +14,7 @@ Console.WriteLine();
 PcManager.ChocoInstaller.InstallAll(
     onProgress: (app, result, index, total) =>
         Console.WriteLine($"[{index}/{total}] {app.Name}: {result.Status}"),
-    onOutputLine: Console.WriteLine);
+    liveConsoleOutput: true);
 
 
 /************************************************************************************/
