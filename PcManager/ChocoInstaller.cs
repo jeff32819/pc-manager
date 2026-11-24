@@ -27,22 +27,23 @@ public static class ChocoInstaller
 
     public static void EnsureChocolateyInstalled()
     {
-        if (IsChocolateyInstalled())
+        if (!IsChocolateyInstalled())
         {
-            return;
+            var result = WingetInstaller.Install(ChocolateyWingetId);
+
+            if (result.Status == WingetInstallStatus.Failed)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to install Chocolatey via winget (exit code {result.ExitCode}).\n{result.Output}");
+            }
         }
 
-        var result = WingetInstaller.Install(ChocolateyWingetId);
-
-        if (result.Status == WingetInstallStatus.Failed)
-        {
-            throw new InvalidOperationException(
-                $"Failed to install Chocolatey via winget (exit code {result.ExitCode}).\n{result.Output}");
-        }
-
-        // The installer just updated the machine's PATH in the registry, but this already-running
-        // process started with its own cached copy of PATH - it won't see "choco" there until the
-        // process restarts, unless we add the install's bin folder to this process' PATH ourselves.
+        // Chocolatey's bin folder may be on PATH for a fresh shell but NOT for this already-running
+        // process - PATH is inherited from the parent process at launch time and never re-read live,
+        // so a process started before Chocolatey was installed (by us just now, or at any point before
+        // this process launched) won't resolve "choco" even though the file genuinely exists on disk.
+        // This runs every time, not just in the "we just installed it" branch above, since that stale-
+        // PATH problem can happen either way.
         var binPath = Path.Combine(GetInstallRoot(), "bin");
         var currentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
 
@@ -81,6 +82,11 @@ public static class ChocoInstaller
 
     public static ChocoInstallResult Install(string packageId, bool liveConsoleOutput = false, Action<string>? onOutputLine = null)
     {
+        // Self-bootstrapping: a cheap File.Exists check after the first successful install, so
+        // callers don't have to remember to call EnsureChocolateyInstalled() separately before
+        // using this class on a machine that doesn't have Chocolatey yet.
+        EnsureChocolateyInstalled();
+
         if (IsInstalled(packageId))
         {
             return new ChocoInstallResult(packageId, ChocoInstallStatus.AlreadyInstalled, 0, string.Empty);
