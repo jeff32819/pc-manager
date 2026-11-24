@@ -20,7 +20,8 @@ public static class ChocoInstaller
     [
       //  new ChocoApp("AnyToISO", "anytoiso"),
       //  new ChocoApp("Paint.NET", "paint.net"),
-        new ChocoApp("WinRAR", "winrar"),
+       // new ChocoApp("WinRAR", "winrar"),
+        new ChocoApp("Slack", "slack"),
     ];
 
     private const string ChocolateyWingetId = "Chocolatey.Chocolatey";
