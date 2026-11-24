@@ -1,6 +1,4 @@
-﻿using PcManager;
-
-Console.WriteLine($"starting... {DateTime.Now}");
+﻿Console.WriteLine($"starting... {DateTime.Now}");
 Console.WriteLine();
 
 
@@ -11,8 +9,9 @@ Console.WriteLine();
 // ConsoleAppTest.Test.Run.Settings();
 // ConsoleAppTest.Test.Run.WingetInstaller();
 // await ConsoleAppTest.Test.Run.DownloadInstall();
+// DesktopVersionWatermarkSetting.Instance.Enable();
 
-DesktopVersionWatermarkSetting.Instance.Enable();
+PcManager.ChocoInstaller.InstallAll();
 
 
 /************************************************************************************/
