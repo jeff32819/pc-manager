@@ -18,13 +18,13 @@ public static class ChocoInstaller
 {
     public static readonly IReadOnlyList<ChocoApp> KnownApps =
     [
-      //  new ChocoApp("AnyToISO", "anytoiso"),
-      //  new ChocoApp("Paint.NET", "paint.net"),
-       // new ChocoApp("WinRAR", "winrar"),
+        // new ChocoApp("AnyToISO", "anytoiso"),
+        // new ChocoApp("Paint.NET", "paint.net"),
+        // new ChocoApp("WinRAR", "winrar"),
         // new ChocoApp("Slack", "slack"),
-        //new ChocoApp("CCleaner", "ccleaner"),
-        //new ChocoApp("WireShark", "wireshark"),
-        new ChocoApp("Filezilla", "filezilla"),
+        // new ChocoApp("CCleaner", "ccleaner"),
+        // new ChocoApp("WireShark", "wireshark"),
+        // new ChocoApp("Filezilla", "filezilla"),
     ];
 
     private const string ChocolateyWingetId = "Chocolatey.Chocolatey";
