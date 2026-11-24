@@ -27,9 +27,13 @@ public static class ChocoInstaller
 
     public static void EnsureChocolateyInstalled()
     {
+        Console.WriteLine($"[DEBUG] EnsureChocolateyInstalled: IsChocolateyInstalled={IsChocolateyInstalled()}, root={GetInstallRoot()}");
+
         if (!IsChocolateyInstalled())
         {
+            Console.WriteLine("[DEBUG] EnsureChocolateyInstalled: installing via winget...");
             var result = WingetInstaller.Install(ChocolateyWingetId);
+            Console.WriteLine($"[DEBUG] EnsureChocolateyInstalled: winget install finished, status={result.Status}");
 
             if (result.Status == WingetInstallStatus.Failed)
             {
@@ -49,7 +53,12 @@ public static class ChocoInstaller
 
         if (!currentPath.Split(Path.PathSeparator).Contains(binPath, StringComparer.OrdinalIgnoreCase))
         {
+            Console.WriteLine($"[DEBUG] EnsureChocolateyInstalled: adding {binPath} to this process' PATH");
             Environment.SetEnvironmentVariable("PATH", $"{currentPath}{Path.PathSeparator}{binPath}");
+        }
+        else
+        {
+            Console.WriteLine($"[DEBUG] EnsureChocolateyInstalled: {binPath} already on this process' PATH");
         }
     }
 
@@ -69,10 +78,14 @@ public static class ChocoInstaller
         var apps = KnownApps;
         var results = new List<ChocoInstallResult>(apps.Count);
 
+        Console.WriteLine($"[DEBUG] InstallAll: {apps.Count} app(s) queued");
+
         for (var i = 0; i < apps.Count; i++)
         {
             var app = apps[i];
+            Console.WriteLine($"[DEBUG] InstallAll: starting {app.Name} ({app.PackageId}) - {i + 1}/{apps.Count}");
             var result = Install(app.PackageId, liveConsoleOutput, onOutputLine);
+            Console.WriteLine($"[DEBUG] InstallAll: finished {app.Name} -> {result.Status} (exit {result.ExitCode})");
             results.Add(result);
             onProgress?.Invoke(app, result, i + 1, apps.Count);
         }
@@ -87,10 +100,15 @@ public static class ChocoInstaller
         // using this class on a machine that doesn't have Chocolatey yet.
         EnsureChocolateyInstalled();
 
+        Console.WriteLine($"[DEBUG] Install({packageId}): checking IsInstalled...");
+
         if (IsInstalled(packageId))
         {
+            Console.WriteLine($"[DEBUG] Install({packageId}): already installed, skipping");
             return new ChocoInstallResult(packageId, ChocoInstallStatus.AlreadyInstalled, 0, string.Empty);
         }
+
+        Console.WriteLine($"[DEBUG] Install({packageId}): not installed, building ProcessStartInfo");
 
         var startInfo = new ProcessStartInfo("choco")
         {
@@ -126,7 +144,9 @@ public static class ChocoInstaller
             process.ErrorDataReceived += OnDataReceived;
         }
 
+        Console.WriteLine($"[DEBUG] Install({packageId}): calling process.Start()...");
         process.Start();
+        Console.WriteLine($"[DEBUG] Install({packageId}): started, PID {process.Id}");
 
         if (!liveConsoleOutput)
         {
@@ -134,7 +154,9 @@ public static class ChocoInstaller
             process.BeginErrorReadLine();
         }
 
+        Console.WriteLine($"[DEBUG] Install({packageId}): waiting for exit...");
         process.WaitForExit();
+        Console.WriteLine($"[DEBUG] Install({packageId}): exited with code {process.ExitCode}");
 
         var status = process.ExitCode == 0 ? ChocoInstallStatus.Installed : ChocoInstallStatus.Failed;
         return new ChocoInstallResult(packageId, status, process.ExitCode, outputBuilder.ToString());
@@ -159,8 +181,12 @@ public static class ChocoInstaller
         startInfo.ArgumentList.Add("--exact");
         startInfo.ArgumentList.Add("-r");
 
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): calling process.Start()...");
+
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start the choco process.");
+
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): started, PID {process.Id}, reading stdout+stderr concurrently...");
 
         // Concurrent reads to avoid the classic Process redirection deadlock - see
         // WingetInstaller.IsInstalled for the full explanation of why this matters.
@@ -168,7 +194,11 @@ public static class ChocoInstaller
         var stderrTask = process.StandardError.ReadToEndAsync();
         Task.WaitAll(stdoutTask, stderrTask);
 
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): both streams read, waiting for exit...");
+
         process.WaitForExit();
+
+        Console.WriteLine($"[DEBUG] IsInstalled({packageId}): exited with code {process.ExitCode}");
 
         var output = stdoutTask.Result.Trim();
         return output.Length > 0 && output.StartsWith(packageId, StringComparison.OrdinalIgnoreCase);
