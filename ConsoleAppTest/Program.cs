@@ -11,7 +11,10 @@ Console.WriteLine();
 // await ConsoleAppTest.Test.Run.DownloadInstall();
 // DesktopVersionWatermarkSetting.Instance.Enable();
 
-PcManager.ChocoInstaller.InstallAll();
+PcManager.ChocoInstaller.InstallAll(
+    onProgress: (app, result, index, total) =>
+        Console.WriteLine($"[{index}/{total}] {app.Name}: {result.Status}"),
+    onOutputLine: Console.WriteLine);
 
 
 /************************************************************************************/
