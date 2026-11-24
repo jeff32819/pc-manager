@@ -18,7 +18,9 @@ public static class ChocoInstaller
 {
     public static readonly IReadOnlyList<ChocoApp> KnownApps =
     [
-        new ChocoApp("AnyToISO", "anytoiso")
+      //  new ChocoApp("AnyToISO", "anytoiso"),
+      //  new ChocoApp("Paint.NET", "paint.net"),
+        new ChocoApp("WinRAR", "winrar"),
     ];
 
     private const string ChocolateyWingetId = "Chocolatey.Chocolatey";
