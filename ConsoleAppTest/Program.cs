@@ -11,10 +11,38 @@ Console.WriteLine();
 // await ConsoleAppTest.Test.Run.DownloadInstall();
 // DesktopVersionWatermarkSetting.Instance.Enable();
 
+var progressRegex = new System.Text.RegularExpressions.Regex(@"Progress:\s*(\d+)%");
+
 PcManager.ChocoInstaller.InstallAll(
     onProgress: (app, result, index, total) =>
-        Console.WriteLine($"[{index}/{total}] {app.Name}: {result.Status}"),
-    liveConsoleOutput: true);
+    {
+        ClearProgressLine();
+        Console.WriteLine($"[{index}/{total}] {app.Name}: {result.Status}");
+    },
+    onOutputLine: line =>
+    {
+        var match = progressRegex.Match(line);
+        if (match.Success)
+        {
+            RenderProgressBar(int.Parse(match.Groups[1].Value));
+        }
+        else if (!string.IsNullOrWhiteSpace(line))
+        {
+            ClearProgressLine();
+            Console.WriteLine(line);
+        }
+    });
+
+static void RenderProgressBar(int percent)
+{
+    const int width = 30;
+    var filled = (int)Math.Round(percent / 100.0 * width);
+    var bar = new string('█', filled) + new string('░', width - filled);
+    Console.Write($"\r[{bar}] {percent,3}%");
+}
+
+static void ClearProgressLine() =>
+    Console.Write('\r' + new string(' ', Math.Max(0, Console.WindowWidth - 1)) + '\r');
 
 
 /************************************************************************************/
