@@ -73,6 +73,19 @@ public static class SystemInfo
         }
     }
 
+    // Windows 10 and 11 both report major.minor 10.0 via Environment.OSVersion - the build
+    // number is the only thing that distinguishes them. 22000 was Windows 11's RTM build.
+    private const int Windows11MinimumBuild = 22000;
+
+    public static (bool IsWindows11, string Version) CheckWindowsVersion()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+        var version = key?.GetValue("DisplayVersion") as string ?? Environment.OSVersion.Version.Build.ToString();
+        var isWindows11 = Environment.OSVersion.Version.Build >= Windows11MinimumBuild;
+
+        return (isWindows11, version);
+    }
+
     [DllImport("kernel32.dll")]
     private static extern ulong GetTickCount64();
 

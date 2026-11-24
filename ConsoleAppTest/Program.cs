@@ -1,4 +1,6 @@
-﻿Console.WriteLine($"starting... {DateTime.Now}");
+﻿using PcManager;
+
+Console.WriteLine($"starting... {DateTime.Now}");
 Console.WriteLine();
 
 
@@ -8,16 +10,15 @@ Console.WriteLine();
 // ConsoleAppTest.Test.Run.Time24Hour();
 // ConsoleAppTest.Test.Run.Settings();
 // ConsoleAppTest.Test.Run.WingetInstaller();
+// await ConsoleAppTest.Test.Run.DownloadInstall();
 
-await ConsoleAppTest.Test.Run.DownloadInstall();
-
-
+DesktopVersionWatermarkSetting.Instance.Enable();
 
 
 /************************************************************************************/
 Console.WriteLine();
 Console.WriteLine("-------------------------------------------------------------");
-Console.ForegroundColor = ConsoleColor.DarkYellow   ;
+Console.ForegroundColor = ConsoleColor.DarkYellow;
 Console.WriteLine("press any key to exit");
 Console.ResetColor();
 Console.ReadKey();
