@@ -128,43 +128,82 @@ public static class ChocoInstaller
         // Deliberately not passing --no-progress: that flag suppresses the "Progress: NN%" lines
         // choco writes during download, which callers need for onOutputLine-based progress bars.
 
+        startInfo.StandardOutputEncoding = Encoding.UTF8;
+        startInfo.StandardErrorEncoding = Encoding.UTF8;
+
         var outputBuilder = new StringBuilder();
 
-        void OnDataReceived(object? sender, DataReceivedEventArgs e)
+        void OnLine(string line)
         {
-            if (e.Data is null)
-            {
-                return;
-            }
-
-            outputBuilder.AppendLine(e.Data);
-            onOutputLine?.Invoke(e.Data);
+            outputBuilder.AppendLine(line);
+            onOutputLine?.Invoke(line);
         }
 
         using var process = new Process { StartInfo = startInfo };
-
-        if (!liveConsoleOutput)
-        {
-            process.OutputDataReceived += OnDataReceived;
-            process.ErrorDataReceived += OnDataReceived;
-        }
 
         Console.WriteLine($"[DEBUG] Install({packageId}): calling process.Start()...");
         process.Start();
         Console.WriteLine($"[DEBUG] Install({packageId}): started, PID {process.Id}");
 
+        Task? stdoutTask = null;
+        Task? stderrTask = null;
+
         if (!liveConsoleOutput)
         {
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            // choco's progress updates ("Progress: 54%") are written with a bare '\r' and no
+            // trailing '\n' until the line next changes. Process.BeginOutputReadLine() only
+            // treats '\n' as a line terminator, so those updates would sit buffered and
+            // invisible until a real newline finally showed up (e.g. at 100%). Reading the raw
+            // stream ourselves and splitting on '\r' as well fixes that. Both streams are read
+            // concurrently - same deadlock-avoidance reasoning as IsInstalled() below.
+            stdoutTask = ReadStreamUpdatesAsync(process.StandardOutput, OnLine);
+            stderrTask = ReadStreamUpdatesAsync(process.StandardError, OnLine);
         }
 
         Console.WriteLine($"[DEBUG] Install({packageId}): waiting for exit...");
         process.WaitForExit();
+
+        if (stdoutTask is not null && stderrTask is not null)
+        {
+            Task.WaitAll(stdoutTask, stderrTask);
+        }
+
         Console.WriteLine($"[DEBUG] Install({packageId}): exited with code {process.ExitCode}");
 
         var status = process.ExitCode == 0 ? ChocoInstallStatus.Installed : ChocoInstallStatus.Failed;
         return new ChocoInstallResult(packageId, status, process.ExitCode, outputBuilder.ToString());
+    }
+
+    // Reads a process stream character-by-character and invokes onUpdate once per '\r'- or
+    // '\n'-terminated chunk, so a bare '\r' (used for in-place progress updates) is treated as
+    // its own update instead of being swallowed until the next real newline.
+    private static async Task ReadStreamUpdatesAsync(StreamReader reader, Action<string> onUpdate)
+    {
+        var buffer = new char[1];
+        var current = new StringBuilder();
+
+        while (await reader.ReadAsync(buffer, 0, 1) > 0)
+        {
+            var c = buffer[0];
+
+            if (c is '\r' or '\n')
+            {
+                if (current.Length > 0)
+                {
+                    onUpdate(current.ToString());
+                    current.Clear();
+                }
+
+                continue;
+            }
+
+            current.Append(c);
+        }
+
+        if (current.Length > 0)
+        {
+            onUpdate(current.ToString());
+        }
     }
 
     // "choco list --local-only <id> --exact -r" prints "id|version" on a match and nothing
